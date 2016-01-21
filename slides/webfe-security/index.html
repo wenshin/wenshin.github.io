@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+
+  <head>
+    <meta charset="utf-8">
+
+    <title>Web FE Security by yuanwen - reveal.js – The HTML Presentation Framework</title>
+
+    <meta name="description" content="A slide for Web FE Security. eg. XSS, CSRF.">
+    <meta name="author" content="Yuanwen / Wenshin">
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
+
+    <link rel="stylesheet" href="../css/reveal.css">
+    <link rel="stylesheet" href="../css/theme/blood.css" id="theme">
+
+    <!-- Code syntax highlighting -->
+    <link rel="stylesheet" href="../lib/css/zenburn.css">
+    <link rel="stylesheet" href="my.css">
+
+    <!-- Printing and PDF exports -->
+    <script>
+      var link = document.createElement( 'link' );
+      link.rel = 'stylesheet';
+      link.type = 'text/css';
+      link.href = window.location.search.match( /print-pdf/gi ) ? '../css/print/pdf.css' : '../css/print/paper.css';
+      document.getElementsByTagName( 'head' )[0].appendChild( link );
+    </script>
+
+    <!--[if lt IE 9]>
+    <script src="../lib/js/html5shiv.js"></script>
+    <![endif]-->
+  </head>
+
+  <body>
+
+    <div class="reveal">
+
+      <!-- Any section element inside of this container is displayed as a slide -->
+      <div class="slides">
+        <section data-markdown>
+          <script type="text/template">
+            # 前端安全与防御
+
+
+            ### XSS, CSRF, SQL 注入
+            <small>Created by [原文](http://www.github.com/wenshin) / [@wenshin](http://twitter.com/wenshin)</small>
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            ## 内容概要和合适对象
+
+            主要介绍前端安全的基础类型 XSS，CSRF，Flash 漏洞实例以及防御方法
+
+
+            简单介绍偏向后台的 SQL 注入原理。
+
+
+            适合**安全入门**的前端同学。
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            ## Web 前端安全类型
+
+
+            Web 前端安全主要有 XSS、CSRF、Flash 漏洞。
+          </script>
+        </section>
+
+        <section>
+          <section data-markdown>
+            <script type="text/template">
+              ### XSS（Cross Site Scripting）
+              ### 跨站脚本攻击
+
+              XSS 是一种利用**字符串拼接HTML、JS Code**、**跨域**等方法注入恶意脚本的攻击
+
+
+              它是 Web 前端安全中影响最大，类型最丰富的一种漏洞
+
+
+              反射型（Reflected）、存储型（Persistent）、DOM-based
+            </script>
+          </section>
+
+          <section data-markdown>
+            <script type="text/template">
+              ## 历史有名的事件
+              1. 2011年6月28日 新浪微博 XSS 蠕虫事件
+              2. 2014年3月9日 百度贴吧 XSS 蠕虫事件
+              3. 2015年3月 Github 被 DDoS 事件
+            </script>
+          </section>
+
+          <section data-markdown>
+            <script type="text/template">
+              ## 那么 XSS 危害有什么？
+              1. 盗取 Cookie甚至账号、LocalStorage信息
+              2. 盗取或篡改用户信息
+              3. 网站挂马和蠕虫
+              4. 对其他用户发送垃圾信息
+              5. 向其它网站发起攻击（DDoS）
+            </script>
+          </section>
+
+          <section>
+            <h3>引发 XSS 的本质原因都有什么?</h3>
+            <ul>
+              <li class="fragment">字符串插入 DOM（DOMElement.innerHTML, document.write）</li>
+              <li class="fragment">字符串拼接 HTML（Server或Client），破坏 HTML 标签和属性闭合，执行内联脚本</li>
+              <li class="fragment">从字符串执行 JS（Function, eval, setTimeout）</li>
+              <li class="fragment">运行外域的 JS</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>栗子-HTML 内联脚本执行</h2>
+            <pre>
+              <code class="html">
+&lt;!-- 点击执行。使用 a.href="javascript:alert(1)" 设置也生效 --&gt;
+&lt;a href="javascript:alert(1)"&gt;&lt;/a&gt;
+
+&lt;img src="not exist" onerror="alert(1)"/&gt;
+
+&lt;iframe src="javascript:alert(1)"&lt;/iframe&gt;
+&lt;iframe src="http://www.baidu.com" onload="alert(1)"&lt;/iframe&gt;
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <h2>栗子-DOM 插入</h2>
+            <pre><code class="javascript">
+// DOM 插入
+var domHTML = '&lt;a href="javascript:alert(1)"&gt;&lt;/a&gt;';
+document.getElementById('test').innerHTML = domHTML;
+document.write('userInput');
+
+// DOM 插入和破坏 HTML 属性闭合
+// 可以闭合属性的符号：空格、%、*、+、,、–、/、;、
+//    &lt;、=、&gt;、^、|、`(反单引号，IE会认为它是单引号)
+var userInput = '" onerror="alert(1)"';
+document.getElementById('test').innerHTML = '&lt;img src="' + userInput + '/&gt;';
+
+// DOM 插入和破坏 HTML Tag 闭合
+var userInput = '"&gt;&lt;img src="" onerror=alert(1)&gt;';
+document.getElementById('test').innerHTML = '&lt;div id="' + userInput + '&lt;/a&gt;';
+            </code></pre>
+          </section>
+
+          <section>
+            <h2>栗子-字符串执行脚本</h2>
+            <pre><code class="javascript">
+// 从字符串执行 JS；
+var userInput = 'alert(1)';
+eval(userInput);
+var fn = new Function(userInput);
+// 比较少出现
+var t = setTimeout(userInput, 1000);
+            </code></pre>
+          </section>
+
+          <section>
+            <h2>反射型 XSS</h2>
+            <img src="./RXSS.gif" width="700px">
+            <br>
+            <a href="./examples/xss.html">栗子</a>
+          </section>
+
+          <section>
+            <h2>存储型 XSS</h2>
+            <img src="./persistent_XSS.jpg" width="700px">
+            <br>
+            <a href="./examples/xss.html">栗子</a>
+          </section>
+
+          <section>
+            <h2>DOM-based XSS</h2>
+            <img src="./dom_based_XSS.jpg" width="700px">
+            <br>
+            <a href="./examples/xss.html">栗子</a>
+          </section>
+
+          <section data-markdown>
+            <script type="text/template">
+              ## XSS 防御
+                * Cookie 中不包含敏感信息
+                * HTTP Header 设置 Cookie "HttpOnly" 为 true
+                * 所有用户输入、API接口、第三方脚本等都是不可信任的，如果插入 style、script、标签属性中需要进行特殊编码和转移
+                * 标签转义 &lt; -> &amp;lt;、&gt; -> &amp;gt;、" -> &quot;、' ->  &#x27;、/ -> &#x2f;
+                * 黑名单过滤，过滤掉 href、src 属性中的"javascript:"
+                * 白名单过滤，只允许安全的类型通过
+                * 避免使用 eval、Function、document.write
+
+              [参考](http://www.freebuf.com/articles/web/9977.html)
+            </script>
+          </section>
+
+        </section>
+
+        <section>
+
+          <section>
+            <h4>CSRF（Cross-site request forgery）</h4>
+            <h4>跨站请求伪造</h4>
+            <p>CSRF 是一种网站服务使用不合理或者不安全的请求方式修改数据导致被恶意利用</p>
+          </section>
+
+          <section data-markdown>
+            <script type="text/template">
+              ## CSRF 的危害
+                主要是可以跨域篡改有漏洞接口的数据
+
+                利用复杂，可操作范围有限
+
+                但如果存在由于可以跨域利用扩散会很快
+            </script>
+          </section>
+
+          <section data-markdown>
+            <script type="text/template">
+              ## 引发 CSRF 的原因
+                * 使用 GET 请求修改数据
+                * 不验证 Referer 和不使用 Token 的 POST 请求
+            </script>
+          </section>
+
+          <section>
+            <h2>CSRF 攻击过程</h2>
+            <img src="./csrf.jpg">
+          </section>
+
+          <section data-markdown>
+            <script type="text/template">
+              ## CSRF 防御
+                * 不使用 GET 请求修改数据
+                * 添加 Referer 验证
+                * POST token 验证
+            </script>
+          </section>
+
+        </section>
+
+        <section>
+          <section data-markdown>
+            <script type="text/template">
+              ## Flash 漏洞
+              Flash 存在 Web 层漏洞和用户系统层漏洞。
+
+              今天主题主要介绍 Flash Web 层的漏洞，XSS 和 CSRF。
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ### Flash 产生 Web 漏洞的原因
+
+              Flash 提供可执行本地 Javascript 的方法
+
+              getToURL(AS2), navigateToURL(AS3), fscommand, ExternalInterface.call
+
+              ```html
+              <!-- IE下嵌入 -->
+              <object codeBase="http://fpdownload.macromedia.com/get/Flashplayer/current/swFlash.cab#version=8,0,0,0" classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000">
+              <param name="movie" value = "http://xxxx.sinaapp.com/trace.swf" />
+              <param name="allowScriptAccess" value="always" />
+              <param name="allowNetworking" value="all" />
+              </object>
+
+              <!-- 非IE下嵌入 -->
+              <object type="application/x-shockwave-Flash" data="./trace.swf">
+              <param name="movie" value = "./trace.swf" />
+              <param name="allowScriptAccess" value="always" />
+              <param name="allowNetworking" value="all" />
+              </object>
+              ```
+            </script>
+          </section>
+
+          <section data-markdown>
+            <script type="text/template">
+              * allowScriptAccess，控制 html 页面与 Flash 页面的通讯
+
+                - always：             通讯不做任何的限制
+                - samedomain：同域的时候可以通讯 (**Default**)
+                - never：              禁止通讯
+
+              * allowNetworking，控制 Flash 与外部的网络通讯
+
+                - all：Flash 所有的网络 API 通讯接口都可用 (**Default**)
+                - internal：    navigateToURL，fscommand，ExternalInterface.call 不可用
+                - none：        所有的网络API不可用
+
+              允许 Flash 设置 allowNetworking 为 all。将可以被利用触发 CSRF 攻击。
+              如果 allowScriptAccess 为 always 即可触发 XSS。
+            </script>
+          </section>
+
+          <section data-markdown>
+            <script type="text/template">
+              ### 服务器端的配置漏洞
+
+              如果需要允许 Flash 访问服务器接口和资源，服务器端需要配置 crossdomain.xml 文件。
+
+              ```html
+              <?xml version="1.0"?>
+              <cross-domain-policy>
+              <allow-access-from domain="www.mydomain.com" />
+              </cross-domain-policy>
+              ```
+
+              allow-access-from 的 domain 属性可以设置为 "*"
+
+              这意味着任何域的 Flash 文件都可以访问本站的接口和资源
+
+              这就留下了 CSRF 攻击的可能性
+            </script>
+          </section>
+
+          <section data-markdown>
+            <script type="text/template">
+              ### 防御方法
+
+              * 尽量避免允许 Flash 和本地 Javascript 交互和访问外部网络
+
+              * 如果需要允许，应该控制 Flash 资源
+
+              * 服务器端 crossdomain.xml 的  allow-access-from 不能设置为 "*"
+            </script>
+          </section>
+
+        </section>
+
+        <section>
+          <section data-markdown>
+            <script type="text/template">
+              ## SQL 注入
+
+              SQL 注入是 Web 应用漏洞中最严重的漏洞了
+
+              轻则窃取、修改数据，重则直接服务器被黑
+            </script>
+          </section>
+
+          <section data-markdown>
+            <script type="text/template">
+              罪恶之源，字符串拼接查询语句！！！
+
+              跟产生 XSS 重要原因很类似 - -
+
+              栗子
+              ```python
+              # 查询语句 SELECT * FROM user WHERE name = 'name'
+
+              name = "name1"
+              cursor.execute("SELECT * FROM user WHERE name = '%s'" % name)
+
+              # 注入
+              name = "name1' or name='name2"
+              cursor.execute("SELECT * FROM user WHERE name = '%s'" % name)
+              ```
+            </script>
+          </section>
+
+          <section data-markdown>
+            <script type="text/template">
+              ## 防御方法
+
+              * 使用参数化查询方法
+              * 对拼接字符串进行校验
+              * 关闭错误提示
+              * ...
+            </script>
+          </section>
+        </section>
+
+        <section>
+          <h1>Thanks</h1>
+        </section>
+
+      </div>
+
+    </div>
+
+    <script src="../lib/js/head.min.js"></script>
+    <script src="../js/reveal.js"></script>
+
+    <script>
+
+      // Full list of configuration options available at:
+      // https://github.com/hakimel/reveal.js#configuration
+      Reveal.initialize({
+        controls: true,
+        progress: true,
+        history: true,
+        center: true,
+
+        transition: 'convex', // none/fade/slide/convex/concave/zoom
+
+        // Optional reveal.js plugins
+        dependencies: [
+          { src: '../lib/js/classList.js', condition: function() { return !document.body.classList; } },
+          { src: '../plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+          { src: '../plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+          { src: '../plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+          { src: '../plugin/zoom-js/zoom.js', async: true },
+          { src: '../plugin/notes/notes.js', async: true }
+        ]
+      });
+
+    </script>
+
+  </body>
+</html>

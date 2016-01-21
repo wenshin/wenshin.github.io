@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <link rel="stylesheet" href="../../lib/css/zenburn.css">
+  </head>
+  <body>
+    <section>
+      <h1>反射型 XSS</h1>
+      <pre>
+        <code class="javascript">
+<!-- 著作权归作者所有。
+  商业转载请联系作者获得授权，非商业转载请注明出处。
+  作者：梧桐雨
+  链接：http://www.zhihu.com/question/26628342/answer/33504799
+  来源：知乎 -->
+
+&lt;?php
+error_reporting(0);
+$name = $_GET["name"];
+?&gt;
+&lt;input id="text" type="text" value="&lt;?php echo $name;?&gt;" /&gt;
+&lt;div id="print"&gt;&lt;/div&gt;
+&lt;script type="text/javascript"&gt;
+var text = document.getElementById("text");
+var print = document.getElementById("print");
+print.innerHTML = text.value; // 获取 text的值，并且输出在print内。这里是导致xss的主要原因。
+        </code>
+      </pre>
+
+    </section>
+
+    <section>
+      <h1>存储型 XSS</h1>
+
+      <form id="storage-css">
+        <input type="text" name="name">
+        <button type="submit">Submit</button>
+      </form>
+      <button id="storage-trigger">Trigger</button>
+
+      <pre><code class="html">
+&lt;form id="storage-css"&gt;
+  &lt;input type="text" name="name"&gt;
+  &lt;button type="submit"&gt;Submit&lt;/button&gt;
+&lt;/form&gt;
+      </code></pre>
+
+      <pre>
+        <code class="javascript">
+// 用户提交数据
+var form = document.getElementById('storage-css');
+form.addEventListener('submit', function (e) {
+  e.preventDefault();
+  saveName(e.target.elements.name.value);
+}, false);
+
+function saveName(name) {
+  // 保存到数据库
+  localStorage.setItem('name', name);
+}
+
+// 展示数据
+function getName() {
+  return localStorage.getItem('name');
+}
+// &lt;img src onerror="alert('存储型 XSS')"/&gt;
+document.getElementById('storage-trigger').onclick = function () {
+  var div = document.createElement('div');
+  div.innerHTML = getName();
+  document.body.appendChild(div);
+};
+        </code>
+      </pre>
+    </section>
+
+    <section>
+      <h1>DOM-based XSS</h1>
+      <pre>
+        <code class="javascript">
+var args = getUrlArgs();
+var test = document.createEelment('div');
+test.innerHTML = args.search || '';
+document.body.appendChild(test);
+
+// trigger url ?search=&lt;img src onerror="alert('DOM-Based XSS')"/&gt;
+        </code>
+      </pre>
+
+      <h3>payload</h3>
+      <a href='?search=&lt;img%20src%20onerror=%22alert(%27DOM-Based XSS%27)%22/&gt;' target="_self">触发DOM-based XSS</a>
+    </section>
+
+    <script src="urlargs.js"></script>
+    <script src="../../plugin/highlight/highlight.js"></script>
+
+    <script type="text/javascript" charset="utf-8">
+      hljs.initHighlightingOnLoad();
+
+      // 反射型 XSS
+      var args = getUrlArgs();
+      var test = document.createElement('div');
+      test.innerHTML = args.search || '';
+      document.body.appendChild(test);
+
+      // 存储型 XSS
+      // 用户提交数据
+      var form = document.getElementById('storage-css');
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        saveName(e.target.elements.name.value);
+      }, false);
+
+      function saveName(name) {
+        // 保存到数据库
+        localStorage.setItem('name', name);
+      }
+
+      // 展示数据
+      function getName() {
+        return localStorage.getItem('name');
+      }
+
+      document.getElementById('storage-trigger').onclick = function () {
+        var div = document.createElement('div');
+        div.innerHTML = getName();
+        document.body.appendChild(div);
+      };
+    </script>
+  </body>
+</html>
