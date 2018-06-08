@@ -1,3 +1,8 @@
+body {
+  background: url(../img/black-white-forest.jpeg);
+  background: url(../img/aurora.jpeg);
+  background-size: cover;
+}
 .reveal strong, .reveal b {
   font-weight: normal;
   color: #FF8080;
