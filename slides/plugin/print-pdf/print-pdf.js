@@ -4,7 +4,7 @@
  * Example:
  * phantomjs print-pdf.js "http://lab.hakim.se/reveal-js?print-pdf" reveal-demo.pdf
  *
- * By Manuel Bieh (https://github.com/manuelbieh)
+ * By Manuel Bieh (https://github.commanuelbieh)
  */
 
 // html2pdf.js
